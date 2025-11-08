@@ -53,18 +53,12 @@ struct {
 #define Motor_2_in1 33  
 #define Motor_2_in2 32  
 
-const uint32_t FREQ = 490;
-const uint8_t PWM_CHANNEL = 0;
-const uint8_t RESOLUTION = 8;
-int8_t duty_cycle= 200;
+// const uint32_t FREQ = 490;
+// const uint8_t PWM_CHANNEL = 0;
+// const uint8_t RESOLUTION = 8;
+// int8_t duty_cycle= 200;
 
 void init_pinout();
-void Handler(int val2, int val1);
-void forward_motor1(int speed);
-void backward_motor1(int speed);
-void forward_motor2(int speed);
-void backward_motor2(int speed);
-void stopMotors();
 
 /* defined two arrays with a list of pins for each motor */
 unsigned char RightMotor[3] = 
@@ -103,12 +97,6 @@ void Wheel (unsigned char * motor, int v)
 void setup() {
   RemoteXY_Init(); 
 
-  //bool ledcAttach(Motor_1_EN, freq, resolution);
-
-  // bool ledcAttachChannel(Motor_1_EN, FREQ, RESOLUTION, PWM_CHANNEL);
-
-  // bool ledcAttachChannel(Motor_2_EN, FREQ, RESOLUTION, PWM_CHANNEL);
-
   init_pinout(); 
   Serial.begin(115200);
 }
@@ -116,10 +104,25 @@ void setup() {
 void loop() { 
    /* event handler module RemoteXY */
   RemoteXY_Handler ();
-  /* manage the right motor */
-  Wheel (RightMotor, RemoteXY.joystick_01_y - RemoteXY.joystick_01_x);
-  /* manage the left motor */
-  Wheel (LeftMotor, RemoteXY.joystick_01_y + RemoteXY.joystick_01_x);
+  int rightSpeed = RemoteXY.joystick_01_y - RemoteXY.joystick_01_x;
+  int leftSpeed = RemoteXY.joystick_01_y + RemoteXY.joystick_01_x;
+  
+  /* find the maximum absolute value between both motors */
+  int maxSpeed = max(abs(rightSpeed), abs(leftSpeed));
+  
+  /* normalize if any motor speed exceeds the joystick range */
+  const int MAX_JOYSTICK = 100;
+  
+  if (maxSpeed > MAX_JOYSTICK) {
+    /* scale both motors proportionally to maintain the arc */
+    float scale = (float)MAX_JOYSTICK / maxSpeed;
+    rightSpeed = rightSpeed * scale;
+    leftSpeed = leftSpeed * scale;
+  }
+  
+  /* manage the motors with normalized speeds */
+  Wheel(RightMotor, leftSpeed);
+  Wheel(LeftMotor, rightSpeed);
 }
 
 void init_pinout() {
